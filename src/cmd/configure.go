@@ -32,13 +32,14 @@ type configureCmdConfig struct {
 	clientAddr6E2EE  string
 	serverAddr4Relay string
 	serverAddr6Relay string
+	disableApi       bool
 	apiAddr          string
 	apiv4Addr        string
 	keepalive        int
 	mtu              int
 	disableV6        bool
 	localhostIP      string
-	generatePSK		 bool
+	generatePSK      bool
 }
 
 // Defaults for configure command.
@@ -61,13 +62,14 @@ var configureCmdArgs = configureCmdConfig{
 	clientAddr6E2EE:  ClientE2EESubnet6.Addr().Next().String() + "/128",
 	serverAddr4Relay: RelaySubnets4.Addr().Next().Next().String() + "/32",
 	serverAddr6Relay: RelaySubnets6.Addr().Next().Next().String() + "/128",
+	disableApi:       false,
 	apiAddr:          ApiSubnets.Addr().Next().Next().String() + "/128",
 	apiv4Addr:        ApiV4Subnets.Addr().Next().Next().String() + "/32",
 	keepalive:        Keepalive,
 	mtu:              MTU,
 	disableV6:        false,
 	localhostIP:      "",
-	generatePSK:	  false,
+	generatePSK:      false,
 }
 
 // configureCmd represents the configure command.
@@ -99,6 +101,7 @@ func init() {
 	configureCmd.Flags().BoolVarP(&configureCmdArgs.writeToClipboard, "clipboard", "c", configureCmdArgs.writeToClipboard, "copy configuration args to clipboard")
 	configureCmd.Flags().BoolVarP(&configureCmdArgs.simple, "simple", "", configureCmdArgs.simple, "disable multihop and multiclient features for a simpler setup")
 
+	configureCmd.Flags().BoolVarP(&configureCmdArgs.disableApi, "disable-api", "", configureCmdArgs.disableApi, "disables server API service")
 	configureCmd.Flags().StringVarP(&configureCmdArgs.apiAddr, "api", "0", configureCmdArgs.apiAddr, "address of server API service")
 	configureCmd.Flags().IntVarP(&configureCmdArgs.keepalive, "keepalive", "k", configureCmdArgs.keepalive, "tunnel keepalive in seconds, only applies to outbound handshakes")
 	configureCmd.Flags().IntVarP(&configureCmdArgs.mtu, "mtu", "m", configureCmdArgs.mtu, "tunnel MTU")
@@ -131,6 +134,7 @@ func init() {
 				"ipv6-relay-server",
 				"keepalive",
 				"mtu",
+				"disable-api",
 				"disable-ipv6",
 				"relay-output",
 				"e2ee-output",
@@ -158,7 +162,10 @@ func (c configureCmdConfig) Run() {
 	if c.disableV6 && netip.MustParsePrefix(c.apiAddr).Addr().Is6() {
 		c.apiAddr = c.apiv4Addr
 	}
-	c.allowedIPs = append(c.allowedIPs, c.apiAddr)
+
+	if !c.disableApi {
+		c.allowedIPs = append(c.allowedIPs, c.apiAddr)
+	}
 
 	// Generate client and server configs.
 	serverConfigRelayArgs := peer.ConfigArgs{}
